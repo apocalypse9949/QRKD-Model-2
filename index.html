@@ -3,153 +3,140 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>QRKD Simulation with QBER </title>
+  <title>Quantum Resonance Key Distribution Simulator</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
       background-color: #0e0e0e;
       color: #fff;
+      font-family: Arial, sans-serif;
       text-align: center;
     }
     canvas {
-      display: block;
-      margin: 20px auto;
       background: #111;
+      margin: 1rem auto;
+      display: block;
     }
     .controls {
-      margin-top: 1em;
+      margin-top: 1rem;
     }
-    label, select, button {
+    select, button {
       font-size: 1rem;
+      padding: 0.4rem 1rem;
       margin: 0.5rem;
     }
-    #qberChart {
-      max-width: 900px;
-      margin: 30px auto;
+    .stats {
+      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
-  <h1>QRKD Simulation - Test Scenarios</h1>
-  <canvas id="qrkdCanvas" width="900" height="400"></canvas>
-  
+  <h1>QKD Simulater(IBM)</h1>
+  <h2> QRKD </h2>
+  <canvas id="qrkdCanvas" width="1000" height="400"></canvas>
   <div class="controls">
-    <label for="testSelect">Select Test Case:</label>
     <select id="testSelect">
-      <option value="low_noise">Low Noise Environment</option>
-      <option value="high_noise">High Noise Interference</option>
-      <option value="lossy_channel">Photon Lossy Channel</option>
-      <option value="perfect_sync">Perfect Phase Sync</option>
-      <option value="weak_feedback">Weak Feedback Efficiency</option>
+      <option value="low_noise">Low Noise</option>
+      <option value="high_noise">High Noise</option>
+      <option value="lossy_channel">Photon Lossy</option>
+      <option value="perfect_sync">Perfect Sync</option>
+      <option value="weak_feedback">Weak Feedback</option>
     </select>
-    <button id="exportBtn">Export Stats to CSV</button>
+    <button id="exportBtn">Export Stats</button>
+  </div>
+  <div class="stats">
+    <p>QBER: <span id="qberDisplay">0</span>%</p>
+    <p>Total Photons: <span id="totalCount">0</span> | Correct: <span id="correctCount">0</span> | Errors: <span id="errorCount">0</span></p>
   </div>
 
-  <canvas id="qberChart" width="900" height="200"></canvas>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const canvas = document.getElementById("qrkdCanvas");
     const ctx = canvas.getContext("2d");
+    const qberDisplay = document.getElementById("qberDisplay");
+    const totalCountDisplay = document.getElementById("totalCount");
+    const correctCountDisplay = document.getElementById("correctCount");
+    const errorCountDisplay = document.getElementById("errorCount");
+
     const testSelect = document.getElementById("testSelect");
     const exportBtn = document.getElementById("exportBtn");
-    
-    const photons = [];
-    let timeStep = 0;
+
+    let photons = [];
+    let fidelityLog = [];
+
     let noiseLevel = 0.05;
     let feedbackEfficiency = 1.0;
     let photonLossRate = 0.05;
-    let totalPhotons = 0, errorPhotons = 0;
-    const fidelityLog = [];
-    const qberData = [];
-
-    const qberCtx = document.getElementById("qberChart").getContext("2d");
-    const qberChart = new Chart(qberCtx, {
-      type: "line",
-      data: {
-        labels: [],
-        datasets: [{
-          label: "QBER (%)",
-          data: [],
-          borderColor: "red",
-          backgroundColor: "rgba(255,0,0,0.1)",
-          tension: 0.3
-        }]
-      },
-      options: {
-        scales: {
-          y: { min: 0, max: 100 }
-        }
-      }
-    });
-
-    function createPhoton() {
-      const alive = Math.random() > photonLossRate;
-      if (alive) totalPhotons++;
-      return {
-        x: 50,
-        y: 200 + Math.random() * 100 - 50,
-        stage: 0,
-        radius: 10,
-        color: "blue",
-        alive,
-        fidelity: 1,
-        error: false
-      };
-    }
-
-    function drawPhoton(p) {
-      if (!p.alive) return;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.fill();
-    }
+    let total = 0, correct = 0, errors = 0;
 
     function drawStages() {
       ctx.setLineDash([5, 5]);
       ctx.strokeStyle = "#666";
-      for (let i = 200; i < 800; i += 200) {
+      [250, 500, 750].forEach(x => {
         ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, 400);
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
         ctx.stroke();
-      }
+      });
       ctx.setLineDash([]);
       ctx.fillStyle = "#aaa";
-      ctx.fillText("Resonance Encoding", 60, 30);
-      ctx.fillText("Weak Measurement", 260, 30);
-      ctx.fillText("Adaptive Phase Corr.", 460, 30);
-      ctx.fillText("Key Extraction", 700, 30);
+      ctx.fillText("Entanglement + Resonance", 50, 20);
+      ctx.fillText("Weak Measurement", 300, 20);
+      ctx.fillText("Adaptive Phase Correction", 550, 20);
+      ctx.fillText("Key Extraction (Bob)", 800, 20);
+    }
+
+    function createPhoton() {
+      return {
+        x: 50,
+        y: 200 + Math.random() * 80 - 40,
+        stage: 0,
+        alive: Math.random() > photonLossRate,
+        fidelity: 1.0,
+        color: "blue"
+      };
+    }
+
+    function applyQuantumNoise(p) {
+      // Dephasing + Depolarization (simplified)
+      const noise = (Math.random() - 0.5) * noiseLevel;
+      p.fidelity = Math.max(0, p.fidelity - Math.abs(noise));
+      if (Math.random() < noiseLevel / 2) p.y += Math.random() * 20 - 10;
     }
 
     function updatePhoton(p) {
       if (!p.alive) return;
       p.x += 2;
-      if (Math.random() < noiseLevel) {
-        p.y += Math.random() * 10 - 5;
-        p.fidelity -= 0.02;
-      }
+      applyQuantumNoise(p);
 
-      if (p.x > 200 && p.stage === 0) {
-        p.color = "yellow";
-        p.fidelity -= 0.01;
-        p.stage = 1;
-      } else if (p.x > 400 && p.stage === 1) {
-        if (Math.random() < feedbackEfficiency) {
-          p.color = "lime";
+      if (p.x > 250 && p.stage === 0) {
+        p.color = "orange"; // entangled
+        p.stage++;
+      } else if (p.x > 500 && p.stage === 1) {
+        p.color = Math.random() < feedbackEfficiency ? "lime" : "red";
+        p.stage++;
+      } else if (p.x > 750 && p.stage === 2) {
+        if (p.color === "lime" && p.fidelity > 0.9) {
+          p.color = "cyan"; // high fidelity key bit
+          correct++;
         } else {
-          p.color = "red";
-          p.error = true;
-          errorPhotons++;
-          p.fidelity -= 0.3;
+          p.color = "gray"; // discarded or error
+          errors++;
         }
-        p.stage = 2;
-      } else if (p.x > 600 && p.stage === 2) {
-        p.color = p.color === "lime" ? "cyan" : "gray";
-        p.stage = 3;
-        fidelityLog.push({ step: timeStep, fidelity: Math.max(0, p.fidelity.toFixed(2)) });
+        total++;
+        fidelityLog.push({
+          id: total,
+          fidelity: p.fidelity.toFixed(3),
+          status: p.color === "cyan" ? "success" : "error"
+        });
+        p.stage++;
       }
+    }
+
+    function drawPhoton(p) {
+      if (!p.alive) return;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
+      ctx.fillStyle = p.color;
+      ctx.fill();
     }
 
     function draw() {
@@ -159,67 +146,51 @@
         updatePhoton(p);
         drawPhoton(p);
       });
+
+      // Remove finished photons
+      photons = photons.filter(p => p.x < 1000);
+      updateStats();
     }
 
-    function updateQBER() {
-      const qber = totalPhotons ? (errorPhotons / totalPhotons) * 100 : 0;
-      qberData.push(qber.toFixed(2));
-      qberChart.data.labels.push(timeStep);
-      qberChart.data.datasets[0].data.push(qber);
-      qberChart.update();
+    function updateStats() {
+      qberDisplay.textContent = total ? ((errors / total) * 100).toFixed(2) : "0.00";
+      totalCountDisplay.textContent = total;
+      correctCountDisplay.textContent = correct;
+      errorCountDisplay.textContent = errors;
     }
 
     setInterval(() => {
-      timeStep++;
       if (Math.random() < 0.2) photons.push(createPhoton());
       draw();
-      updateQBER();
-    }, 200);
+    }, 40);
 
     testSelect.addEventListener("change", () => {
-      const testCase = testSelect.value;
-      switch (testCase) {
+      const value = testSelect.value;
+      switch (value) {
         case "low_noise":
-          noiseLevel = 0.01;
-          feedbackEfficiency = 1.0;
-          photonLossRate = 0.01;
-          break;
+          noiseLevel = 0.01; photonLossRate = 0.01; feedbackEfficiency = 1.0; break;
         case "high_noise":
-          noiseLevel = 0.2;
-          feedbackEfficiency = 0.8;
-          photonLossRate = 0.1;
-          break;
+          noiseLevel = 0.2; photonLossRate = 0.1; feedbackEfficiency = 0.6; break;
         case "lossy_channel":
-          noiseLevel = 0.05;
-          feedbackEfficiency = 0.9;
-          photonLossRate = 0.3;
-          break;
+          noiseLevel = 0.05; photonLossRate = 0.3; feedbackEfficiency = 0.8; break;
         case "perfect_sync":
-          noiseLevel = 0.0;
-          feedbackEfficiency = 1.0;
-          photonLossRate = 0.0;
-          break;
+          noiseLevel = 0.0; photonLossRate = 0.0; feedbackEfficiency = 1.0; break;
         case "weak_feedback":
-          noiseLevel = 0.05;
-          feedbackEfficiency = 0.3;
-          photonLossRate = 0.05;
-          break;
+          noiseLevel = 0.05; photonLossRate = 0.05; feedbackEfficiency = 0.3; break;
       }
     });
 
-    // [NEW] Export to CSV
     exportBtn.addEventListener("click", () => {
-      let csv = "TimeStep,Fidelity\n";
-      fidelityLog.forEach(f => {
-        csv += `${f.step},${f.fidelity}\n`;
+      let csvContent = "ID,Fidelity,Status\n";
+      fidelityLog.forEach(row => {
+        csvContent += `${row.id},${row.fidelity},${row.status}\n`;
       });
-      const blob = new Blob([csv], { type: "text/csv" });
+      const blob = new Blob([csvContent], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "fidelity_log.csv";
+      link.download = "qrkd_fidelity_log.csv";
       link.click();
-      URL.revokeObjectURL(url);
     });
   </script>
 </body>
