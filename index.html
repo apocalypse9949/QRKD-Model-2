@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QRKD Simulation with Accurate Model</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QRKD Simulation with QBER & Export</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -19,15 +19,20 @@
     .controls {
       margin-top: 1em;
     }
-    label, select {
+    label, select, button {
       font-size: 1rem;
-      margin: 0 0.5rem;
+      margin: 0.5rem;
+    }
+    #qberChart {
+      max-width: 900px;
+      margin: 30px auto;
     }
   </style>
 </head>
 <body>
-  <h1>Quantum Resonance Key Distribution (QRKD) Simulation</h1>
+  <h1>QRKD Simulation - Test Scenarios</h1>
   <canvas id="qrkdCanvas" width="900" height="400"></canvas>
+  
   <div class="controls">
     <label for="testSelect">Select Test Case:</label>
     <select id="testSelect">
@@ -37,29 +42,59 @@
       <option value="perfect_sync">Perfect Phase Sync</option>
       <option value="weak_feedback">Weak Feedback Efficiency</option>
     </select>
+    <button id="exportBtn">Export Stats to CSV</button>
   </div>
 
+  <canvas id="qberChart" width="900" height="200"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const canvas = document.getElementById("qrkdCanvas");
     const ctx = canvas.getContext("2d");
     const testSelect = document.getElementById("testSelect");
-
+    const exportBtn = document.getElementById("exportBtn");
+    
+    const photons = [];
+    let timeStep = 0;
     let noiseLevel = 0.05;
     let feedbackEfficiency = 1.0;
     let photonLossRate = 0.05;
-    const PHASE_SHIFT_RES = Math.PI / 4;
+    let totalPhotons = 0, errorPhotons = 0;
+    const fidelityLog = [];
+    const qberData = [];
 
-    const photons = [];
+    const qberCtx = document.getElementById("qberChart").getContext("2d");
+    const qberChart = new Chart(qberCtx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "QBER (%)",
+          data: [],
+          borderColor: "red",
+          backgroundColor: "rgba(255,0,0,0.1)",
+          tension: 0.3
+        }]
+      },
+      options: {
+        scales: {
+          y: { min: 0, max: 100 }
+        }
+      }
+    });
 
     function createPhoton() {
+      const alive = Math.random() > photonLossRate;
+      if (alive) totalPhotons++;
       return {
         x: 50,
         y: 200 + Math.random() * 100 - 50,
         stage: 0,
         radius: 10,
         color: "blue",
-        alive: Math.random() > photonLossRate,
-        phase: Math.random() * 2 * Math.PI
+        alive,
+        fidelity: 1,
+        error: false
       };
     }
 
@@ -91,32 +126,29 @@
     function updatePhoton(p) {
       if (!p.alive) return;
       p.x += 2;
-
       if (Math.random() < noiseLevel) {
         p.y += Math.random() * 10 - 5;
-        p.phase += Math.random() * PHASE_SHIFT_RES - PHASE_SHIFT_RES / 2;
+        p.fidelity -= 0.02;
       }
 
       if (p.x > 200 && p.stage === 0) {
-        p.color = "yellow"; // Resonance encoding: apply base phase encoding
-        p.phase += PHASE_SHIFT_RES;
+        p.color = "yellow";
+        p.fidelity -= 0.01;
         p.stage = 1;
       } else if (p.x > 400 && p.stage === 1) {
         if (Math.random() < feedbackEfficiency) {
-          p.color = "lime"; // Weak Measurement Feedback corrects phase
-          p.phase -= p.phase % PHASE_SHIFT_RES;
+          p.color = "lime";
         } else {
           p.color = "red";
+          p.error = true;
+          errorPhotons++;
+          p.fidelity -= 0.3;
         }
         p.stage = 2;
       } else if (p.x > 600 && p.stage === 2) {
-        // Phase Correction Logic
-        if (Math.abs(p.phase % PHASE_SHIFT_RES) < 0.01) {
-          p.color = "cyan";
-        } else {
-          p.color = "gray";
-        }
+        p.color = p.color === "lime" ? "cyan" : "gray";
         p.stage = 3;
+        fidelityLog.push({ step: timeStep, fidelity: Math.max(0, p.fidelity.toFixed(2)) });
       }
     }
 
@@ -129,10 +161,20 @@
       });
     }
 
+    function updateQBER() {
+      const qber = totalPhotons ? (errorPhotons / totalPhotons) * 100 : 0;
+      qberData.push(qber.toFixed(2));
+      qberChart.data.labels.push(timeStep);
+      qberChart.data.datasets[0].data.push(qber);
+      qberChart.update();
+    }
+
     setInterval(() => {
+      timeStep++;
       if (Math.random() < 0.2) photons.push(createPhoton());
       draw();
-    }, 30);
+      updateQBER();
+    }, 200);
 
     testSelect.addEventListener("change", () => {
       const testCase = testSelect.value;
@@ -163,6 +205,21 @@
           photonLossRate = 0.05;
           break;
       }
+    });
+
+    // [NEW] Export to CSV
+    exportBtn.addEventListener("click", () => {
+      let csv = "TimeStep,Fidelity\n";
+      fidelityLog.forEach(f => {
+        csv += `${f.step},${f.fidelity}\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "fidelity_log.csv";
+      link.click();
+      URL.revokeObjectURL(url);
     });
   </script>
 </body>
