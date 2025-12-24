@@ -1,197 +1,419 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Quantum Resonance Key Distribution Simulator</title>
-  <style>
-    body {
-      background-color: #0e0e0e;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    canvas {
-      background: #111;
-      margin: 1rem auto;
-      display: block;
-    }
-    .controls {
-      margin-top: 1rem;
-    }
-    select, button {
-      font-size: 1rem;
-      padding: 0.4rem 1rem;
-      margin: 0.5rem;
-    }
-    .stats {
-      margin-top: 1rem;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRKD Protocol Simulation | Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e74c3c; /* Red for QRKD */
+            --standard: #3498db; /* Blue for Standard QKD */
+            --bg: #ecf0f1;
+            --card-bg: #ffffff;
+            --text: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; color: var(--primary); }
+        p { margin: 5px 0; color: #7f8c8d; }
+
+        /* --- CONTROL PANEL --- */
+        .controls {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 1000px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 45%;
+        }
+
+        label { font-weight: bold; margin-bottom: 10px; }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        /* Range Slider */
+        input[type=range] { width: 100%; }
+        .val-display { font-size: 1.2em; font-weight: bold; color: var(--primary); }
+
+        /* --- ANIMATION CANVAS --- */
+        .simulation-container {
+            width: 90%;
+            max-width: 1000px;
+            height: 150px;
+            background: #000;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        
+        .node {
+            width: 60px; height: 60px;
+            background: #333;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            color: #fff;
+            display: flex; justify-content: center; align-items: center;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .fiber-optic {
+            position: absolute;
+            left: 50px; right: 50px;
+            top: 50%;
+            height: 4px;
+            background: #333;
+            z-index: 1;
+        }
+
+        .photon {
+            width: 15px; height: 15px;
+            background: yellow;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 10px yellow;
+            opacity: 1;
+            transition: left 2s linear, opacity 2s linear;
+        }
+
+        /* --- DASHBOARD GRAPHS --- */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 90%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <h1>QKD Simulater(IBM)</h1>
-  <h2> QRKD </h2>
-  <canvas id="qrkdCanvas" width="1000" height="400"></canvas>
-  <div class="controls">
-    <select id="testSelect">
-      <option value="low_noise">Low Noise</option>
-      <option value="high_noise">High Noise</option>
-      <option value="lossy_channel">Photon Lossy</option>
-      <option value="perfect_sync">Perfect Sync</option>
-      <option value="weak_feedback">Weak Feedback</option>
-    </select>
-    <button id="exportBtn">Export Stats</button>
-  </div>
-  <div class="stats">
-    <p>QBER: <span id="qberDisplay">0</span>%</p>
-    <p>Total Photons: <span id="totalCount">0</span> | Correct: <span id="correctCount">0</span> | Errors: <span id="errorCount">0</span></p>
-  </div>
 
-  <script>
-    const canvas = document.getElementById("qrkdCanvas");
-    const ctx = canvas.getContext("2d");
-    const qberDisplay = document.getElementById("qberDisplay");
-    const totalCountDisplay = document.getElementById("totalCount");
-    const correctCountDisplay = document.getElementById("correctCount");
-    const errorCountDisplay = document.getElementById("errorCount");
+    <header>
+        <h1>QRKD Protocol Simulation</h1>
+        <p>Resonance-Enhanced Phase Stabilization for Long-Distance QKD</p>
+    </header>
 
-    const testSelect = document.getElementById("testSelect");
-    const exportBtn = document.getElementById("exportBtn");
+    <div class="controls">
+        <div class="control-group">
+            <label>Transmission Distance: <span id="distanceVal" class="val-display">500</span> km</label>
+            <input type="range" id="distance" min="0" max="1000" value="500">
+        </div>
 
-    let photons = [];
-    let fidelityLog = [];
+        <div class="control-group">
+            <label>Protocol Mode</label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span>Standard QKD</span>
+                <label class="switch">
+                    <input type="checkbox" id="qrkdToggle">
+                    <span class="slider"></span>
+                </label>
+                <span style="color: var(--accent); font-weight: bold;">QRKD (Resonance)</span>
+            </div>
+        </div>
+    </div>
 
-    let noiseLevel = 0.05;
-    let feedbackEfficiency = 1.0;
-    let photonLossRate = 0.05;
-    let total = 0, correct = 0, errors = 0;
+    <div class="simulation-container">
+        <div class="node">Alice</div>
+        <div class="fiber-optic"></div>
+        <div id="photonStream"></div> <div class="node">Bob</div>
+    </div>
 
-    function drawStages() {
-      ctx.setLineDash([5, 5]);
-      ctx.strokeStyle = "#666";
-      [250, 500, 750].forEach(x => {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      });
-      ctx.setLineDash([]);
-      ctx.fillStyle = "#aaa";
-      ctx.fillText("Entanglement + Resonance", 50, 20);
-      ctx.fillText("Weak Measurement", 300, 20);
-      ctx.fillText("Adaptive Phase Correction", 550, 20);
-      ctx.fillText("Key Extraction (Bob)", 800, 20);
-    }
+    <div class="dashboard">
+        <div class="card">
+            <canvas id="lossChart"></canvas>
+        </div>
 
-    function createPhoton() {
-      return {
-        x: 50,
-        y: 200 + Math.random() * 80 - 40,
-        stage: 0,
-        alive: Math.random() > photonLossRate,
-        fidelity: 1.0,
-        color: "blue"
-      };
-    }
+        <div class="card">
+            <canvas id="bellChart"></canvas>
+            <div style="text-align: center; margin-top: 10px;">
+                Status: <span id="securityStatus" class="status-badge" style="background: gray;">Calculating...</span>
+            </div>
+        </div>
+    </div>
 
-    function applyQuantumNoise(p) {
-      // Dephasing + Depolarization (simplified)
-      const noise = (Math.random() - 0.5) * noiseLevel;
-      p.fidelity = Math.max(0, p.fidelity - Math.abs(noise));
-      if (Math.random() < noiseLevel / 2) p.y += Math.random() * 20 - 10;
-    }
-
-    function updatePhoton(p) {
-      if (!p.alive) return;
-      p.x += 2;
-      applyQuantumNoise(p);
-
-      if (p.x > 250 && p.stage === 0) {
-        p.color = "orange"; // entangled
-        p.stage++;
-      } else if (p.x > 500 && p.stage === 1) {
-        p.color = Math.random() < feedbackEfficiency ? "lime" : "red";
-        p.stage++;
-      } else if (p.x > 750 && p.stage === 2) {
-        if (p.color === "lime" && p.fidelity > 0.9) {
-          p.color = "cyan"; // high fidelity key bit
-          correct++;
-        } else {
-          p.color = "gray"; // discarded or error
-          errors++;
+<script>
+    // --- 1. CONFIGURATION ---
+    const ctxLoss = document.getElementById('lossChart').getContext('2d');
+    const ctxBell = document.getElementById('bellChart').getContext('2d');
+    
+    // Physics Constants based on your paper
+    const CLASSICAL_LIMIT = 2.0;
+    const QUANTUM_BOUND = 2.828;
+    const QRKD_S_VALUE = 2.6420; // Your paper's value
+    
+    // --- 2. CHART INITIALIZATION ---
+    
+    // Photon Loss Chart (Matches your Figure 2)
+    const lossChart = new Chart(ctxLoss, {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 11}, (_, i) => i * 100), // 0 to 1000 km
+            datasets: [
+                {
+                    label: 'QRKD (Resonance-Enhanced)',
+                    borderColor: '#e74c3c', // Red
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    data: [],
+                    tension: 0.4,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Standard QKD',
+                    borderColor: '#3498db', // Blue
+                    borderDash: [5, 5],
+                    data: [],
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: { display: true, text: 'Photon Loss Probability vs. Distance' }
+            },
+            scales: {
+                y: { min: 0, max: 1.05, title: {display: true, text: 'Loss Probability'} },
+                x: { title: {display: true, text: 'Distance (km)'} }
+            }
         }
-        total++;
-        fidelityLog.push({
-          id: total,
-          fidelity: p.fidelity.toFixed(3),
-          status: p.color === "cyan" ? "success" : "error"
-        });
-        p.stage++;
-      }
-    }
-
-    function drawPhoton(p) {
-      if (!p.alive) return;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
-      ctx.fillStyle = p.color;
-      ctx.fill();
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawStages();
-      photons.forEach(p => {
-        updatePhoton(p);
-        drawPhoton(p);
-      });
-
-      // Remove finished photons
-      photons = photons.filter(p => p.x < 1000);
-      updateStats();
-    }
-
-    function updateStats() {
-      qberDisplay.textContent = total ? ((errors / total) * 100).toFixed(2) : "0.00";
-      totalCountDisplay.textContent = total;
-      correctCountDisplay.textContent = correct;
-      errorCountDisplay.textContent = errors;
-    }
-
-    setInterval(() => {
-      if (Math.random() < 0.2) photons.push(createPhoton());
-      draw();
-    }, 40);
-
-    testSelect.addEventListener("change", () => {
-      const value = testSelect.value;
-      switch (value) {
-        case "low_noise":
-          noiseLevel = 0.01; photonLossRate = 0.01; feedbackEfficiency = 1.0; break;
-        case "high_noise":
-          noiseLevel = 0.2; photonLossRate = 0.1; feedbackEfficiency = 0.6; break;
-        case "lossy_channel":
-          noiseLevel = 0.05; photonLossRate = 0.3; feedbackEfficiency = 0.8; break;
-        case "perfect_sync":
-          noiseLevel = 0.0; photonLossRate = 0.0; feedbackEfficiency = 1.0; break;
-        case "weak_feedback":
-          noiseLevel = 0.05; photonLossRate = 0.05; feedbackEfficiency = 0.3; break;
-      }
     });
 
-    exportBtn.addEventListener("click", () => {
-      let csvContent = "ID,Fidelity,Status\n";
-      fidelityLog.forEach(row => {
-        csvContent += `${row.id},${row.fidelity},${row.status}\n`;
-      });
-      const blob = new Blob([csvContent], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "qrkd_fidelity_log.csv";
-      link.click();
+    // Bell's Inequality Bar Chart (Matches your Figure 1)
+    const bellChart = new Chart(ctxBell, {
+        type: 'bar',
+        data: {
+            labels: ['Bell Parameter (S)'],
+            datasets: [{
+                label: 'S-Value',
+                data: [0],
+                backgroundColor: '#3498db',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: { display: true, text: "Bell's Inequality Violation (Security Check)" },
+                annotation: {
+                    annotations: {
+                        line1: {
+                            type: 'line',
+                            yMin: 2.0,
+                            yMax: 2.0,
+                            borderColor: 'red',
+                            borderWidth: 2,
+                            label: { content: 'Classical Limit (2.0)', enabled: true }
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { min: 0, max: 3.0 }
+            }
+        }
     });
-  </script>
+
+    // --- 3. SIMULATION LOGIC ---
+
+    function updatePhysics() {
+        const distance = parseInt(document.getElementById('distance').value);
+        const isQRKD = document.getElementById('qrkdToggle').checked;
+        
+        document.getElementById('distanceVal').innerText = distance;
+
+        // --- A. Update Photon Loss Data ---
+        // Generates the static curve logic from your python code
+        const qrkdData = [];
+        const qkdData = [];
+        
+        for(let d=0; d<=1000; d+=100) {
+            // Your formulas from python script
+            let lossQKD = 1 - Math.exp(-0.015 * d); 
+            let lossQRKD = 1 - Math.exp(-0.004 * d);
+            
+            qkdData.push(lossQKD);
+            qrkdData.push(lossQRKD);
+        }
+        
+        lossChart.data.datasets[0].data = qrkdData;
+        lossChart.data.datasets[1].data = qkdData;
+        
+        // Highlight current distance on graph (visual trick)
+        // (In a full app we might add a vertical line annotation)
+        lossChart.update('none'); // Update without full re-render for speed
+
+        // --- B. Update Bell's S-Value ---
+        let sValue = 0;
+        let statusText = "";
+        let statusColor = "";
+
+        if (isQRKD) {
+            // QRKD maintains coherence -> High S value
+            // Slight decay over distance, but stays > 2 up to 1000km
+            sValue = QRKD_S_VALUE - (distance * 0.0005); 
+            statusText = "SECURE (Entanglement Verified)";
+            statusColor = "#27ae60"; // Green
+        } else {
+            // Standard QKD decoheres quickly
+            if (distance > 150) {
+                sValue = 0.0001; // Collapse (Your "Before" graph)
+                statusText = "INSECURE (Decoherence)";
+                statusColor = "#c0392b"; // Red
+            } else {
+                sValue = 2.4 - (distance * 0.01); // Decays fast
+                statusText = "SECURE (Short Range)";
+                statusColor = "#27ae60";
+            }
+        }
+
+        bellChart.data.datasets[0].data = [sValue];
+        bellChart.data.datasets[0].backgroundColor = sValue > 2 ? '#3498db' : '#e74c3c';
+        
+        // Add the red limit line dynamically
+        bellChart.options.plugins.annotation = {
+             annotations: {
+                line1: {
+                    type: 'line',
+                    yMin: 2, yMax: 2, borderColor: 'red', borderWidth: 2
+                }
+            }
+        };
+        
+        bellChart.update();
+
+        // Update Text Badge
+        const badge = document.getElementById('securityStatus');
+        badge.innerText = statusText;
+        badge.style.backgroundColor = statusColor;
+        
+        // Adjust Photon Animation Speed/Opacity based on loss
+        updatePhotonVisuals(distance, isQRKD);
+    }
+
+    // --- 4. VISUAL ANIMATION ---
+    function spawnPhoton() {
+        const stream = document.getElementById('photonStream');
+        const photon = document.createElement('div');
+        photon.className = 'photon';
+        photon.style.left = '60px'; // Start at Alice
+        
+        // Physics for visuals
+        const distance = parseInt(document.getElementById('distance').value);
+        const isQRKD = document.getElementById('qrkdToggle').checked;
+        
+        // Calculate survival chance
+        let decayRate = isQRKD ? 0.004 : 0.015;
+        let survivalProb = Math.exp(-decayRate * distance);
+        
+        stream.appendChild(photon);
+
+        // Animation
+        setTimeout(() => {
+            photon.style.left = 'calc(100% - 70px)'; // Move to Bob
+            
+            // If it dies (loss), fade it out halfway
+            if (Math.random() > survivalProb) {
+                photon.style.opacity = '0';
+            }
+        }, 50);
+
+        // Cleanup
+        setTimeout(() => { photon.remove(); }, 2100);
+    }
+
+    let photonInterval;
+    function updatePhotonVisuals(distance, isQRKD) {
+        clearInterval(photonInterval);
+        // Spawn faster if distance is short, just for effect
+        photonInterval = setInterval(spawnPhoton, 500);
+    }
+
+    // Listeners
+    document.getElementById('distance').addEventListener('input', updatePhysics);
+    document.getElementById('qrkdToggle').addEventListener('change', updatePhysics);
+
+    // Init
+    updatePhysics();
+    photonInterval = setInterval(spawnPhoton, 500);
+
+</script>
 </body>
 </html>
