@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QRKD Protocol Simulation | Dashboard</title>
+    <title>QRKD Protocol Simulation | IBM Quantum Demo</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -93,48 +93,76 @@
         .simulation-container {
             width: 90%;
             max-width: 1000px;
-            height: 150px;
+            height: 180px;
             background: #000;
             border-radius: 10px;
             position: relative;
             overflow: hidden;
             margin-bottom: 20px;
-            border: 2px solid var(--primary);
+            border: 4px solid var(--primary);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
+        }
+
+        /* --- IBM WATERMARK STYLING --- */
+        .ibm-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-10deg);
+            font-size: 5rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.08); /* Subtle transparent white */
+            pointer-events: none; /* Allows clicks to pass through */
+            z-index: 0; /* Behind particles */
+            white-space: nowrap;
+            font-family: 'Courier New', monospace;
+            letter-spacing: -2px;
+            user-select: none;
+        }
+
+        .ibm-subtext {
+            font-size: 1rem;
+            display: block;
+            text-align: right;
+            opacity: 0.6;
+            letter-spacing: 5px;
+            font-weight: normal;
         }
         
         .node {
             width: 60px; height: 60px;
-            background: #333;
+            background: #222;
             border: 2px solid #fff;
             border-radius: 5px;
             color: #fff;
             display: flex; justify-content: center; align-items: center;
             font-weight: bold;
             z-index: 2;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
         }
 
         .fiber-optic {
             position: absolute;
             left: 50px; right: 50px;
             top: 50%;
-            height: 4px;
-            background: #333;
+            height: 2px;
+            background: rgba(255,255,255,0.2);
             z-index: 1;
         }
 
         .photon {
-            width: 15px; height: 15px;
-            background: yellow;
+            width: 12px; height: 12px;
+            background: #00ffcc; /* Quantum Blue/Green */
             border-radius: 50%;
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            box-shadow: 0 0 10px yellow;
-            opacity: 1;
+            box-shadow: 0 0 15px #00ffcc;
+            z-index: 2;
             transition: left 2s linear, opacity 2s linear;
         }
 
@@ -191,6 +219,11 @@
     </div>
 
     <div class="simulation-container">
+        <div class="ibm-watermark">
+            IBM <span style="color:#3498db">Q</span>uantum
+            <span class="ibm-subtext">SIMULATION ENGINE</span>
+        </div>
+
         <div class="node">Alice</div>
         <div class="fiber-optic"></div>
         <div id="photonStream"></div> <div class="node">Bob</div>
@@ -221,7 +254,7 @@
     
     // --- 2. CHART INITIALIZATION ---
     
-    // Photon Loss Chart (Matches your Figure 2)
+    // Photon Loss Chart
     const lossChart = new Chart(ctxLoss, {
         type: 'line',
         data: {
@@ -256,7 +289,7 @@
         }
     });
 
-    // Bell's Inequality Bar Chart (Matches your Figure 1)
+    // Bell's Inequality Bar Chart
     const bellChart = new Chart(ctxBell, {
         type: 'bar',
         data: {
@@ -300,12 +333,10 @@
         document.getElementById('distanceVal').innerText = distance;
 
         // --- A. Update Photon Loss Data ---
-        // Generates the static curve logic from your python code
         const qrkdData = [];
         const qkdData = [];
         
         for(let d=0; d<=1000; d+=100) {
-            // Your formulas from python script
             let lossQKD = 1 - Math.exp(-0.015 * d); 
             let lossQRKD = 1 - Math.exp(-0.004 * d);
             
@@ -315,10 +346,7 @@
         
         lossChart.data.datasets[0].data = qrkdData;
         lossChart.data.datasets[1].data = qkdData;
-        
-        // Highlight current distance on graph (visual trick)
-        // (In a full app we might add a vertical line annotation)
-        lossChart.update('none'); // Update without full re-render for speed
+        lossChart.update('none'); 
 
         // --- B. Update Bell's S-Value ---
         let sValue = 0;
@@ -326,19 +354,18 @@
         let statusColor = "";
 
         if (isQRKD) {
-            // QRKD maintains coherence -> High S value
-            // Slight decay over distance, but stays > 2 up to 1000km
+            // QRKD maintains coherence
             sValue = QRKD_S_VALUE - (distance * 0.0005); 
             statusText = "SECURE (Entanglement Verified)";
             statusColor = "#27ae60"; // Green
         } else {
             // Standard QKD decoheres quickly
             if (distance > 150) {
-                sValue = 0.0001; // Collapse (Your "Before" graph)
+                sValue = 0.0001; // Collapse
                 statusText = "INSECURE (Decoherence)";
                 statusColor = "#c0392b"; // Red
             } else {
-                sValue = 2.4 - (distance * 0.01); // Decays fast
+                sValue = 2.4 - (distance * 0.01);
                 statusText = "SECURE (Short Range)";
                 statusColor = "#27ae60";
             }
@@ -347,7 +374,6 @@
         bellChart.data.datasets[0].data = [sValue];
         bellChart.data.datasets[0].backgroundColor = sValue > 2 ? '#3498db' : '#e74c3c';
         
-        // Add the red limit line dynamically
         bellChart.options.plugins.annotation = {
              annotations: {
                 line1: {
@@ -364,7 +390,7 @@
         badge.innerText = statusText;
         badge.style.backgroundColor = statusColor;
         
-        // Adjust Photon Animation Speed/Opacity based on loss
+        // Update visual loop
         updatePhotonVisuals(distance, isQRKD);
     }
 
@@ -375,34 +401,30 @@
         photon.className = 'photon';
         photon.style.left = '60px'; // Start at Alice
         
-        // Physics for visuals
         const distance = parseInt(document.getElementById('distance').value);
         const isQRKD = document.getElementById('qrkdToggle').checked;
         
-        // Calculate survival chance
+        // Physics for visuals
         let decayRate = isQRKD ? 0.004 : 0.015;
         let survivalProb = Math.exp(-decayRate * distance);
         
         stream.appendChild(photon);
 
-        // Animation
         setTimeout(() => {
             photon.style.left = 'calc(100% - 70px)'; // Move to Bob
             
-            // If it dies (loss), fade it out halfway
+            // Simulation of photon loss
             if (Math.random() > survivalProb) {
-                photon.style.opacity = '0';
+                photon.style.opacity = '0'; // Photon dies
             }
         }, 50);
 
-        // Cleanup
         setTimeout(() => { photon.remove(); }, 2100);
     }
 
     let photonInterval;
     function updatePhotonVisuals(distance, isQRKD) {
         clearInterval(photonInterval);
-        // Spawn faster if distance is short, just for effect
         photonInterval = setInterval(spawnPhoton, 500);
     }
 
