@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QRKD Protocol Simulation | IBM Quantum Demo</title>
+    <title>QRKD Protocol Simulation | IBM Quantum</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #2c3e50;
             --accent: #e74c3c; /* Red for QRKD */
             --standard: #3498db; /* Blue for Standard QKD */
-            --bg: #ecf0f1;
+            --bg: #f4f6f7;
             --card-bg: #ffffff;
             --text: #333;
+            --ibm-blue: #0f62fe; /* Official IBM Blue */
+            --ibm-dark: #161616; /* IBM Black */
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif; /* IBM Style Font preference */
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
@@ -28,140 +30,136 @@
 
         header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
 
-        h1 { margin: 0; color: var(--primary); }
+        h1 { margin: 0; color: var(--ibm-dark); font-weight: 300; letter-spacing: -1px; }
         p { margin: 5px 0; color: #7f8c8d; }
 
         /* --- CONTROL PANEL --- */
         .controls {
             background: var(--card-bg);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 25px;
+            border-radius: 0; /* IBM Design often uses sharp corners */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             width: 90%;
             max-width: 1000px;
             display: flex;
             justify-content: space-around;
             align-items: center;
             margin-bottom: 20px;
+            border-left: 4px solid var(--ibm-blue);
         }
 
         .control-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
             width: 45%;
         }
 
-        label { font-weight: bold; margin-bottom: 10px; }
+        label { font-weight: 600; margin-bottom: 10px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
 
         /* Toggle Switch */
         .switch {
             position: relative;
             display: inline-block;
-            width: 60px;
-            height: 34px;
+            width: 50px;
+            height: 26px;
         }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
             position: absolute;
             cursor: pointer;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+            background-color: #8d8d8d;
+            transition: .2s;
         }
         .slider:before {
             position: absolute;
             content: "";
-            height: 26px; width: 26px;
+            height: 18px; width: 18px;
             left: 4px; bottom: 4px;
             background-color: white;
-            transition: .4s;
-            border-radius: 50%;
+            transition: .2s;
         }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(26px); }
+        input:checked + .slider { background-color: var(--ibm-blue); }
+        input:checked + .slider:before { transform: translateX(24px); }
 
         /* Range Slider */
-        input[type=range] { width: 100%; }
-        .val-display { font-size: 1.2em; font-weight: bold; color: var(--primary); }
+        input[type=range] { width: 100%; accent-color: var(--ibm-blue); }
+        .val-display { font-size: 1.2em; font-weight: bold; color: var(--ibm-blue); }
 
         /* --- ANIMATION CANVAS --- */
         .simulation-container {
             width: 90%;
             max-width: 1000px;
-            height: 180px;
+            height: 200px;
             background: #000;
-            border-radius: 10px;
             position: relative;
             overflow: hidden;
             margin-bottom: 20px;
-            border: 4px solid var(--primary);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
+            padding: 0 40px;
+            box-sizing: border-box;
+            border: 1px solid #333;
         }
 
-        /* --- IBM WATERMARK STYLING --- */
-        .ibm-watermark {
+        /* --- IBM LABEL (THE BADGE) --- */
+        .ibm-label {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-10deg);
-            font-size: 5rem;
-            font-weight: 900;
-            color: rgba(255, 255, 255, 0.08); /* Subtle transparent white */
-            pointer-events: none; /* Allows clicks to pass through */
-            z-index: 0; /* Behind particles */
-            white-space: nowrap;
-            font-family: 'Courier New', monospace;
-            letter-spacing: -2px;
-            user-select: none;
-        }
-
-        .ibm-subtext {
-            font-size: 1rem;
-            display: block;
-            text-align: right;
-            opacity: 0.6;
-            letter-spacing: 5px;
-            font-weight: normal;
+            bottom: 15px;
+            right: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            padding: 8px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-family: monospace;
+            font-size: 0.85rem;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
         }
         
+        .ibm-prefix {
+            font-weight: 900;
+            letter-spacing: 1px;
+            border-right: 1px solid rgba(255,255,255,0.4);
+            padding-right: 8px;
+        }
+
         .node {
-            width: 60px; height: 60px;
-            background: #222;
-            border: 2px solid #fff;
-            border-radius: 5px;
+            width: 50px; height: 50px;
+            background: #161616;
+            border: 1px solid var(--ibm-blue);
             color: #fff;
             display: flex; justify-content: center; align-items: center;
             font-weight: bold;
+            font-size: 0.8rem;
             z-index: 2;
-            box-shadow: 0 0 15px rgba(255,255,255,0.2);
         }
 
         .fiber-optic {
             position: absolute;
-            left: 50px; right: 50px;
+            left: 65px; right: 65px;
             top: 50%;
-            height: 2px;
-            background: rgba(255,255,255,0.2);
+            height: 1px;
+            background: rgba(255,255,255,0.3);
             z-index: 1;
         }
 
         .photon {
-            width: 12px; height: 12px;
-            background: #00ffcc; /* Quantum Blue/Green */
+            width: 8px; height: 8px;
+            background: #3ddbd9; /* Cyan for Quantum */
             border-radius: 50%;
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            box-shadow: 0 0 15px #00ffcc;
+            box-shadow: 0 0 10px #3ddbd9;
             z-index: 2;
             transition: left 2s linear, opacity 2s linear;
         }
@@ -177,56 +175,61 @@
 
         .card {
             background: var(--card-bg);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
 
         .status-badge {
             display: inline-block;
-            padding: 5px 10px;
-            border-radius: 5px;
-            color: white;
-            font-weight: bold;
-            margin-top: 10px;
+            padding: 6px 12px;
+            background: #e0e0e0;
+            color: #161616;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 15px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>QRKD Protocol Simulation</h1>
-        <p>Resonance-Enhanced Phase Stabilization for Long-Distance QKD</p>
+        <h1>QRKD PROTOCOL SIMULATION</h1>
+        <p>Resonance-Enhanced Phase Stabilization | <span style="color:var(--ibm-blue)">IBM Quantum Engine</span></p>
     </header>
 
     <div class="controls">
         <div class="control-group">
-            <label>Transmission Distance: <span id="distanceVal" class="val-display">500</span> km</label>
-            <input type="range" id="distance" min="0" max="1000" value="500">
+            <label>Transmission Distance</label>
+            <div style="display:flex; align-items:center; gap:15px; width:100%;">
+                <input type="range" id="distance" min="0" max="1000" value="500">
+                <span id="distanceVal" class="val-display">500 km</span>
+            </div>
         </div>
 
-        <div class="control-group">
-            <label>Protocol Mode</label>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span>Standard QKD</span>
+        <div class="control-group" style="align-items: flex-start; padding-left: 20px; border-left: 1px solid #eee;">
+            <label>Protocol Configuration</label>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="font-size:0.9rem;">Standard QKD</span>
                 <label class="switch">
                     <input type="checkbox" id="qrkdToggle">
                     <span class="slider"></span>
                 </label>
-                <span style="color: var(--accent); font-weight: bold;">QRKD (Resonance)</span>
+                <span style="color: var(--ibm-blue); font-weight: bold; font-size:0.9rem;">QRKD Mode</span>
             </div>
         </div>
     </div>
 
     <div class="simulation-container">
-        <div class="ibm-watermark">
-            IBM <span style="color:#3498db">Q</span>uantum
-            <span class="ibm-subtext">SIMULATION ENGINE</span>
+        <div class="ibm-label">
+            <span class="ibm-prefix">IBM</span> Quantum
         </div>
 
-        <div class="node">Alice</div>
+        <div class="node">ALICE</div>
         <div class="fiber-optic"></div>
-        <div id="photonStream"></div> <div class="node">Bob</div>
+        <div id="photonStream"></div> 
+        <div class="node">BOB</div>
     </div>
 
     <div class="dashboard">
@@ -236,8 +239,8 @@
 
         <div class="card">
             <canvas id="bellChart"></canvas>
-            <div style="text-align: center; margin-top: 10px;">
-                Status: <span id="securityStatus" class="status-badge" style="background: gray;">Calculating...</span>
+            <div style="text-align: center;">
+                <span id="securityStatus" class="status-badge">Initializing...</span>
             </div>
         </div>
     </div>
@@ -247,49 +250,51 @@
     const ctxLoss = document.getElementById('lossChart').getContext('2d');
     const ctxBell = document.getElementById('bellChart').getContext('2d');
     
-    // Physics Constants based on your paper
-    const CLASSICAL_LIMIT = 2.0;
-    const QUANTUM_BOUND = 2.828;
-    const QRKD_S_VALUE = 2.6420; // Your paper's value
+    const QRKD_S_VALUE = 2.6420; 
     
     // --- 2. CHART INITIALIZATION ---
-    
-    // Photon Loss Chart
+    Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+    Chart.defaults.color = '#555';
+
     const lossChart = new Chart(ctxLoss, {
         type: 'line',
         data: {
-            labels: Array.from({length: 11}, (_, i) => i * 100), // 0 to 1000 km
+            labels: Array.from({length: 11}, (_, i) => i * 100),
             datasets: [
                 {
-                    label: 'QRKD (Resonance-Enhanced)',
-                    borderColor: '#e74c3c', // Red
-                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    label: 'QRKD (Resonance)',
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.05)',
                     data: [],
-                    tension: 0.4,
-                    borderWidth: 3
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 0
                 },
                 {
                     label: 'Standard QKD',
-                    borderColor: '#3498db', // Blue
+                    borderColor: '#0f62fe', // IBM Blue
                     borderDash: [5, 5],
                     data: [],
-                    tension: 0.4
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 0
                 }
             ]
         },
         options: {
             responsive: true,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                title: { display: true, text: 'Photon Loss Probability vs. Distance' }
+                title: { display: true, text: 'Photon Loss Probability', align: 'start', font: {size: 14, weight:'bold'} },
+                legend: { labels: { usePointStyle: true, boxWidth: 8 } }
             },
             scales: {
-                y: { min: 0, max: 1.05, title: {display: true, text: 'Loss Probability'} },
-                x: { title: {display: true, text: 'Distance (km)'} }
+                y: { min: 0, max: 1.05, grid: { color: '#f0f0f0'} },
+                x: { grid: { display: false } }
             }
         }
     });
 
-    // Bell's Inequality Bar Chart
     const bellChart = new Chart(ctxBell, {
         type: 'bar',
         data: {
@@ -297,29 +302,28 @@
             datasets: [{
                 label: 'S-Value',
                 data: [0],
-                backgroundColor: '#3498db',
-                borderWidth: 1
+                backgroundColor: '#0f62fe',
+                barThickness: 50
             }]
         },
         options: {
             responsive: true,
             plugins: {
-                title: { display: true, text: "Bell's Inequality Violation (Security Check)" },
+                title: { display: true, text: "Security Check (Bell's Inequality)", align: 'start', font: {size: 14, weight:'bold'} },
+                legend: { display: false },
                 annotation: {
                     annotations: {
                         line1: {
                             type: 'line',
-                            yMin: 2.0,
-                            yMax: 2.0,
-                            borderColor: 'red',
-                            borderWidth: 2,
-                            label: { content: 'Classical Limit (2.0)', enabled: true }
+                            yMin: 2.0, yMax: 2.0, borderColor: '#e74c3c', borderWidth: 2, borderDash: [4,4],
+                            label: { content: 'Classical Limit', enabled: true, position: 'end', backgroundColor: 'rgba(0,0,0,0.7)', font: {size:10} }
                         }
                     }
                 }
             },
             scales: {
-                y: { min: 0, max: 3.0 }
+                y: { min: 0, max: 3.0, grid: { color: '#f0f0f0'} },
+                x: { display: false }
             }
         }
     });
@@ -330,67 +334,52 @@
         const distance = parseInt(document.getElementById('distance').value);
         const isQRKD = document.getElementById('qrkdToggle').checked;
         
-        document.getElementById('distanceVal').innerText = distance;
+        document.getElementById('distanceVal').innerText = distance + " km";
 
-        // --- A. Update Photon Loss Data ---
+        // Update Loss Data
         const qrkdData = [];
         const qkdData = [];
-        
         for(let d=0; d<=1000; d+=100) {
             let lossQKD = 1 - Math.exp(-0.015 * d); 
             let lossQRKD = 1 - Math.exp(-0.004 * d);
-            
             qkdData.push(lossQKD);
             qrkdData.push(lossQRKD);
         }
-        
         lossChart.data.datasets[0].data = qrkdData;
         lossChart.data.datasets[1].data = qkdData;
-        lossChart.update('none'); 
+        lossChart.update('none');
 
-        // --- B. Update Bell's S-Value ---
+        // Update Bell's S-Value
         let sValue = 0;
         let statusText = "";
-        let statusColor = "";
+        let statusBg = "";
+        let statusColor = "#fff";
 
         if (isQRKD) {
-            // QRKD maintains coherence
             sValue = QRKD_S_VALUE - (distance * 0.0005); 
-            statusText = "SECURE (Entanglement Verified)";
-            statusColor = "#27ae60"; // Green
+            statusText = "SECURE (ENTANGLEMENT VERIFIED)";
+            statusBg = "#198038"; // Green
         } else {
-            // Standard QKD decoheres quickly
             if (distance > 150) {
-                sValue = 0.0001; // Collapse
-                statusText = "INSECURE (Decoherence)";
-                statusColor = "#c0392b"; // Red
+                sValue = 0.0001; 
+                statusText = "INSECURE (LINK BROKEN)";
+                statusBg = "#da1e28"; // Red
             } else {
                 sValue = 2.4 - (distance * 0.01);
-                statusText = "SECURE (Short Range)";
-                statusColor = "#27ae60";
+                statusText = "SECURE (SHORT RANGE)";
+                statusBg = "#198038";
             }
         }
 
         bellChart.data.datasets[0].data = [sValue];
-        bellChart.data.datasets[0].backgroundColor = sValue > 2 ? '#3498db' : '#e74c3c';
-        
-        bellChart.options.plugins.annotation = {
-             annotations: {
-                line1: {
-                    type: 'line',
-                    yMin: 2, yMax: 2, borderColor: 'red', borderWidth: 2
-                }
-            }
-        };
-        
+        bellChart.data.datasets[0].backgroundColor = sValue > 2 ? '#0f62fe' : '#da1e28';
         bellChart.update();
 
-        // Update Text Badge
         const badge = document.getElementById('securityStatus');
         badge.innerText = statusText;
-        badge.style.backgroundColor = statusColor;
+        badge.style.backgroundColor = statusBg;
+        badge.style.color = statusColor;
         
-        // Update visual loop
         updatePhotonVisuals(distance, isQRKD);
     }
 
@@ -399,23 +388,21 @@
         const stream = document.getElementById('photonStream');
         const photon = document.createElement('div');
         photon.className = 'photon';
-        photon.style.left = '60px'; // Start at Alice
+        photon.style.left = '50px'; 
         
         const distance = parseInt(document.getElementById('distance').value);
         const isQRKD = document.getElementById('qrkdToggle').checked;
         
-        // Physics for visuals
         let decayRate = isQRKD ? 0.004 : 0.015;
         let survivalProb = Math.exp(-decayRate * distance);
         
         stream.appendChild(photon);
 
         setTimeout(() => {
-            photon.style.left = 'calc(100% - 70px)'; // Move to Bob
-            
-            // Simulation of photon loss
+            photon.style.left = 'calc(100% - 60px)'; 
             if (Math.random() > survivalProb) {
-                photon.style.opacity = '0'; // Photon dies
+                photon.style.opacity = '0'; 
+                photon.style.transform = 'translateY(-50%) scale(0.5)';
             }
         }, 50);
 
@@ -425,16 +412,14 @@
     let photonInterval;
     function updatePhotonVisuals(distance, isQRKD) {
         clearInterval(photonInterval);
-        photonInterval = setInterval(spawnPhoton, 500);
+        photonInterval = setInterval(spawnPhoton, 400);
     }
 
-    // Listeners
     document.getElementById('distance').addEventListener('input', updatePhysics);
     document.getElementById('qrkdToggle').addEventListener('change', updatePhysics);
 
-    // Init
     updatePhysics();
-    photonInterval = setInterval(spawnPhoton, 500);
+    photonInterval = setInterval(spawnPhoton, 400);
 
 </script>
 </body>
